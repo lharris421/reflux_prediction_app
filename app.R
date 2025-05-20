@@ -31,7 +31,34 @@ ui <- fluidPage(
   ),
 
   # Modern Info toggle button as circle with icon
-  actionButton("toggle_info", label = NULL, icon = icon("info-circle"), class = "btn-info-circle"),
+  tags$head(
+    tags$style(HTML("
+    .btn-info-circle {
+      background-color: #00558C !important;  /* your new bg color */
+      color: white !important;               /* your icon/text color */
+      border: none !important;
+    }
+    .btn-info-circle:hover {
+      background-color: #004370 !important;  /* a darker hover shade */
+    }
+    .external-btn {
+      background-color: #00558C;
+      color: white;
+      border: none;
+    }
+    .external-btn:hover {
+      background-color: #004370;  /* 20% darker */
+      color: white;
+    }
+  "))
+  ),
+  actionButton(
+    "toggle_info",
+    label = NULL,
+    icon = icon("info-circle"),
+    class = "btn-info-circle"
+  ),
+
 
   titlePanel("Reflux Resolution Prediction"),
 
@@ -98,7 +125,12 @@ ui <- fluidPage(
   tags$div(id = "info_sidebar",
            h4("Information"),
            p("This sidebar can contain user guidance, documentation, or instructions."),
-           NULL
+           actionButton(
+             inputId = "file_bug",
+             label   = "File a bug",
+             onclick = "window.open('https://github.com/lharris421/reflux_prediction_app/issues','_blank')",
+             class   = "btn external-btn"         # optional extra styling
+           )
   )
 )
 
