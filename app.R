@@ -4,150 +4,141 @@ library(shinyjs)
 library(glue)
 library(stringr)
 
-# Load preprocessed model data
+## ── Data ────────────────────────────────────────────────────────────────
 dat_params <- readRDS("data/reflux_model_params.rds")
-dat_thresh <- readRDS("data/reflux_model_thresholds.rds")
-params1 <- dat_params$params1
-params2 <- dat_params$params2
-thresh1 <- dat_thresh$thresh1
-thresh2 <- dat_thresh$thresh2
+# dat_thresh <- readRDS("data/reflux_model_thresholds.rds")
+params1 <- dat_params$params1          # 1-year model coefficients
+params2 <- dat_params$params2          # 2-year model coefficients
+# thresh1 <- dat_thresh$thresh1          # ROC info, 1 year
+# thresh2 <- dat_thresh$thresh2          # ROC info, 2 years
 
+## ── User interface ───────────────────────────────────────────────────────
 ui <- fluidPage(
   useShinyjs(),
-  # Custom CSS for sliding sidebar and logo positioning
   tags$head(tags$style(HTML(
-    "#info_sidebar { position: fixed; top: 0; right: -300px; width: 300px; height: 100%; background: #f9f9f9; border-left: 1px solid #ccc; padding: 15px; z-index: 999; transition: right 0.3s ease; overflow-y: auto; }",
-    "#info_sidebar.visible { right: 0; }",
-    ".btn-info-circle { position: fixed; top: 15px; right: 15px; z-index:1001; background-color: #007ACC; border: none; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: background-color 0.2s ease, transform 0.2s ease; }",
-    ".btn-info-circle:hover { background-color: #005A9E; transform: scale(1.1); }",
-    "#logo { position: fixed; top: 15px; right: 70px; z-index:1000; transition: right 0.3s ease; }",
-    "#logo.shifted { right: 370px; }"
-  ))),
+    "#info_sidebar { position: fixed; top: 0; right: -300px; width:300px;
+       height:100%; background:#f9f9f9; border-left:1px solid #ccc;
+       padding:15px; z-index:999; transition:right .3s ease; overflow-y:auto;}
+     #info_sidebar.visible{right:0;}
+     .btn-info-circle{position:fixed; top:15px; right:15px; z-index:1001;
+       background:#007ACC; border:none; color:#fff; width:40px; height:40px;
+       border-radius:50%; display:flex; align-items:center; justify-content:center;
+       box-shadow:0 2px 6px rgba(0,0,0,.2); transition:.2s;}
+     .btn-info-circle:hover{background:#005A9E; transform:scale(1.1);}
+     #logo{position:fixed; top:15px; right:70px; z-index:1000; transition:.3s;}
+     #logo.shifted{right:370px;}"))),
 
-  # University logo
-  tags$div(id = "logo",
-           tags$img(src = "https://brand.uiowa.edu/sites/brand.uiowa.edu/files/styles/widescreen__1312_x_738/public/2020-05/Block%20IOWA-black%20on%20gold%402x.png?h=42ab2369&itok=EeG8mSs7",
-                    height = "50px", alt = "UIowa logo")
-  ),
+  tags$div(id="logo",
+           tags$img(src="UIHC_SFCH_H_GoldBlack.svg",
+                    height="50px", alt="UIowa logo")),
 
-  # Modern Info toggle button as circle with icon
-  tags$head(
-    tags$style(HTML("
-    .btn-info-circle {
-      background-color: #00558C !important;  /* your new bg color */
-      color: white !important;               /* your icon/text color */
-      border: none !important;
-    }
-    .btn-info-circle:hover {
-      background-color: #004370 !important;  /* a darker hover shade */
-    }
-    .external-btn {
-      background-color: #00558C;
-      color: white;
-      border: none;
-    }
-    .external-btn:hover {
-      background-color: #004370;  /* 20% darker */
-      color: white;
-    }
-  "))
-  ),
-  actionButton(
-    "toggle_info",
-    label = NULL,
-    icon = icon("info-circle"),
-    class = "btn-info-circle"
-  ),
-
+  actionButton("toggle_info", label = NULL, icon = icon("info-circle"),
+               class = "btn-info-circle"),
 
   titlePanel("Reflux Resolution Prediction"),
 
   fluidRow(
+    ## ── Sidebar ──────────────────────────────────────────────────────────
     column(width = 3,
            wellPanel(
-             # Time Horizon section
-             h4("Time Horizon"),
-             selectInput("horizon", "", choices = c("1 Year" = "1yr", "2 Years" = "2yr")),
-             hr(),
-
-             # Patient Information
              h4("Patient Information"),
-             numericInput("age", "Age", value = NA, min = 0, max = 11),
-             helpText("Enter age in years (0–11)", style = "margin-top: -10px; margin-bottom: 10px; font-size: 80%; color: #555;"),
-             selectInput("sex", "Sex", choices = c("Select..." = "", "Female" = "female", "Male" = "male")),
-             selectInput("reflux_bilat", "Bilateral Reflux", choices = c("Select..." = "", "Yes" = "y", "No" = "n")),
+             numericInput("age", "Age", value = NA, min = 0, max = 10),
+             helpText("Years (0.01 – 10)", style =
+                        "margin-top:-10px;margin-bottom:10px;font-size:80%;color:#555;"),
+             selectInput("sex", "Sex",
+                         choices = c("Select..."="", "Female"="female", "Male"="male")),
+             selectInput("reflux_bilat", "Bilateral Reflux",
+                         choices = c("Select..."="", "Yes"="y", "No"="n")),
              selectInput("presenting_sx", "Presenting Symptom", choices = c(
-               "Select..." = "", "UTI" = "uti", "Febrile UTI" = "febrile uti",
-               "Antenatal Hydro" = "antenatal hydro", "Screening" = "screening"
-             )),
+               "Select..."="", "UTI"="uti", "Febrile UTI"="febrile uti",
+               "Antenatal Hydro"="antenatal hydro", "Screening"="screening")),
              hr(),
 
-             # Measurements
              h4("Measurements"),
-             numericInput("udr", "UDR", value = NA, min = 0),
-             numericInput("volume_pct", "Volume at Onset (%)", value = NA, min = 7.3, max = 202.3),
-             helpText("Validated range: 7.3–202.3", style = "margin-top: -10px; margin-bottom: 10px; font-size: 80%; color: #555;"),
-             selectInput("reflux_gr", "Reflux Grade", choices = c("Select..." = "", "1" = "1", "2" = "2", "3" = "3", "4-5" = "4-5")),
-             div(id = "predict-wrapper", actionButton("predict", "Predict"))
-           )
-    ),
-    column(width = 6,
+             helpText("At least one of the three following measurements must be provided. However, please only enter either UDR or Volume at Onset (one must be left blank). Also note that either can be entered with Reflux Grade."),
+             numericInput("udr", "UDR", value = NA, min = 0.036, max = 0.747),
+             helpText("Validated range: 0.04 – 0.75", style =
+                        "margin-top:-10px;margin-bottom:10px;font-size:80%;color:#555;"),
+             numericInput("volume_pct", "Volume at Onset (%)",
+                          value = NA, min = 8.1, max = 117.9),
+             helpText("Validated range: 8% – 118%", style =
+                        "margin-top:-10px;margin-bottom:10px;font-size:80%;color:#555;"),
+             tags$div(textOutput("meas_warn"),
+                      style="color:#d9534f;font-weight:600;margin-top:-5px;"),
+             selectInput("reflux_gr", "Reflux Grade",
+                         choices = c("Select..."="","1","2","3","4-5")),
+             div(id="predict-wrapper", actionButton("predict", "Predict"))
+           )),
+
+    ## ── Main panel ──────────────────────────────────────────────────────
+    column(width = 7,
            conditionalPanel(
-             condition = "input.predict > 0",
-             h4("Summary:"),
-             div(
-               style = "white-space: pre-line; margin: 0; padding: 0; font-size: 18px;",
-               textOutput("summary")
-             ),
-             hr(),
-             fluidRow(
-               column(width = 6,
-                      h4("Patient Information:"),
-                      div(
-                        style = "white-space: pre-line; margin: 0; padding: 0; font-size: 18px;",
-                        textOutput("input_summary")
-                      )
-               ),
-               column(width = 6,
-                      h4("Prediction:"),
-                      div(
-                        style = "white-space: pre-line; margin: 0; padding: 0; font-size: 18px;",
-                        textOutput("prediction_summary")
-                      )
+             condition = "input.predict == 0",
+             wellPanel(
+                 h4("Welcome"),
+                 p("This calculator is a predictive tool developed by the Pediatric Urology Department of Iowa Health Care."),
+                 h4("How to use this tool"),
+                 p("1. Fill in the patient information on the left."),
+                 p("2. Enter EITHER UDR OR Volume at Onset (and Grade if you have it)."),
+                 p("3. Click ", tags$strong("Predict"), " to see calculate the chance of resolution.")
+             )
+           ),
+           conditionalPanel(
+             "input.predict > 0",
+             wellPanel(
+               fluidRow(
+                 column(
+                   width = 6,
+                   h4("Patient Information"),
+                   div(
+                     style = "white-space:pre-line; font-size:18px;",
+                     textOutput("input_summary")
+                   )
+                 ),
+                 column(
+                   width = 6,
+                   h4("Chance of resolution"),
+                   div(
+                     style = "white-space:pre-line; font-size:18px;",
+                     textOutput("prediction_summary")
+                   )
+                 )
                )
              )
            )
-    )
 
+    )
   ),
 
-  # Sliding Info Sidebar
-  tags$div(id = "info_sidebar",
+  ## ── Sliding info sidebar ──────────────────────────────────────────────
+  tags$div(id="info_sidebar",
            h4("Information"),
-           p("This sidebar can contain user guidance, documentation, or instructions."),
-           actionButton(
-             inputId = "file_bug",
-             label   = "File a bug",
-             onclick = "window.open('https://github.com/lharris421/reflux_prediction_app/issues','_blank')",
-             class   = "btn external-btn"         # optional extra styling
-           )
+           p("Several different models were fit for prediction based on the measurements available. The fitted models contain variables including presenting symptoms, laterality of reflux, grade of reflux, distal ureteral diameter ratio (UDR), and bladder volume at the onset of reflux as a percentage of predicted bladder capacity."),
+           p("The model used for prediction is based on the available data for your patient, and the predicted chance of resolution is based on your patients individualized data."),
+           p(
+             tags$strong("Note:"),
+             " When bilateral reflux is present, the highest grade of either side is used to calculate predicted resolution."
+           ),
+           hr(),
+           actionButton("file_bug", "File a bug",
+                        onclick="window.open('https://github.com/lharris421/reflux_prediction_app/issues','_blank')",
+                        class="btn external-btn")
   )
 )
 
+## ── Server ──────────────────────────────────────────────────────────────
 server <- function(input, output, session) {
-  # Initialize
+
   disable("predict")
-  runjs('$("#info_sidebar").removeClass("visible");')
-  runjs('$("#logo").removeClass("shifted");')
-  runjs('$("#predict-wrapper").attr("title","Fill patient information and valid measurements to enable");')
+  runjs('$("#info_sidebar").removeClass("visible"); $("#logo").removeClass("shifted");')
+  runjs('$("#predict-wrapper").attr("title","Fill patient information to enable");')
 
-  # Toggle sidebar visibility and logo shift
-  observeEvent(input$toggle_info, {
-    runjs("$('#info_sidebar').toggleClass('visible');")
-    runjs("$('#logo').toggleClass('shifted');")
-  })
+  lbl_sex   <- c(female="Female",  male="Male")
+  lbl_bilat <- c(y="Yes", n="No")
+  lbl_sx    <- c(`uti`="UTI", `febrile uti`="Febrile UTI",
+                 `antenatal hydro`="Antenatal Hydro", screening="Screening")
 
-  # Valid model logic
+  ## ── Helpers ───────────────────────────────────────────────────────────
   valid_model <- reactive({
     has_udr <- !is.na(input$udr)
     has_vol <- !is.na(input$volume_pct)
@@ -160,111 +151,119 @@ server <- function(input, output, session) {
     else NULL
   })
 
-  base_check <- reactive({
-    if (is.na(input$age) || !nzchar(input$sex) || !nzchar(input$reflux_bilat) || !nzchar(input$presenting_sx)) {
-      FALSE
-    } else {
-      TRUE
-    }
+  base_ok <- reactive({
+    !is.na(input$age) &&
+      nzchar(input$sex) &&
+      nzchar(input$reflux_bilat) &&
+      nzchar(input$presenting_sx)
   })
 
-  model_sheet <- reactive({
-    key <- valid_model(); if (is.null(key)) return(NULL)
-    glue("{key}-resolve{input$horizon}")
-  })
-
-  # Enable Predict and set tooltip
   observe({
-    base_ok  <- base_check()
-    combo_ok <- !is.null(model_sheet())
-    if (base_ok && combo_ok) {
+    if (base_ok() && !is.null(valid_model()))
       enable("predict")
-      runjs('$("#predict-wrapper").attr("title","Click to predict");')
-    } else {
+    else
       disable("predict")
-      msg <- if (!base_ok) "Please provide patient information." else "Enter a valid measurement combination: Reflux grade, Volume, Grade+Volume, UDR, or UDR+Grade."
-      runjs(sprintf('$("#predict-wrapper").attr("title","%s");', gsub('"','\\"', msg)))
-    }
   })
 
-  # Prediction logic
-  observeEvent(input$predict, {
-    sheet <- model_sheet(); req(sheet)
-    plist <- if (input$horizon == "1yr") params1 else params2
-    tlist <- if (input$horizon == "1yr") thresh1 else thresh2
-    df <- plist[[sheet]] %>% mutate(Estimate = as.numeric(Estimate))
-    lp <- sum(sapply(seq_len(nrow(df)), function(i) {
+  output$meas_warn <- renderText({
+    if (!is.na(input$udr) && !is.na(input$volume_pct))
+      "Please enter EITHER UDR OR Volume—one must be blank."
+  })
+
+  ## ── Core prediction routine ───────────────────────────────────────────
+  make_prediction <- function(hor, sheet_key) {
+    plist     <- if (hor=="1yr") params1 else params2
+    # thresh_ls <- if (hor=="1yr") thresh1 else thresh2
+
+    df       <- plist[[sheet_key]] |> mutate(across(c(Estimate, SE), as.numeric))
+    # cutoff   <- thresh_ls[[sheet_key]]$threshold
+    # sens     <- thresh_ls[[sheet_key]]$sensitivity
+
+    lp      <- 0
+    lp_var  <- 0                # ⬅ NEW
+
+    for (i in seq_len(nrow(df))) {
       code <- tolower(df$Parameter[i])
-      lvl <- tolower(df$Level[i])
-      est <- df$Estimate[i]
-      if (code == "intercept") return(est)
-      if (code == "ln(age)") return(est * log(input$age))
-      if (code == "udr") return(est * input$udr)
-      if (code == "volume_onsetpct") return(est * input$volume_pct)
-      val <- switch(code,
-                    sex_female       = input$sex,
-                    reflux_bilateral = input$reflux_bilat,
-                    presentingsx     = input$presenting_sx,
-                    reflux_gr        = input$reflux_gr,
-                    NA_character_)
-      if (!is.na(val) && val == lvl) return(est)
-      0
-    }))
-    prob   <- exp(lp) / (1 + exp(lp))
-    ## cutoff <- tlist[[sheet]]
-    cutoff <- 0.5
-    # output$model_used  <- renderText(paste("Model:", sheet))
-    output$result_prob <- renderText(paste("Predicted probability of resolution:", round(prob, 3)))
+      lvl  <- tolower(df$Level[i])
+      est  <- df$Estimate[i]
+      se   <- df$SE[i]
 
-    odds <- prob / (1 - prob)
-    if (odds < 1) {
-      num <- 1
-      denom <- round(1 / odds)
-    } else {
-      num <- round(odds)
-      denom <- 1
+      x_i <- switch(code,
+                    intercept        = 1,
+                    `ln(age)`        = log(input$age),
+                    udr              = input$udr,
+                    volume_onsetpct  = input$volume_pct,
+                    sex_female       = as.numeric(input$sex           == lvl),
+                    reflux_bilateral = as.numeric(input$reflux_bilat  == lvl),
+                    presentingsx     = as.numeric(input$presenting_sx == lvl),
+                    reflux_gr        = as.numeric(input$reflux_gr     == lvl),
+                    0)
+
+      lp     <- lp     + est * x_i
+      # lp_var <- lp_var + (x_i * se)^2      # ⬅ accumulate variance
     }
 
-    if (prob >= cutoff) {
-      res <- "resolve"
-    } else {
-      res <- "not resolve"
-    }
+    # lp_se <- sqrt(lp_var)
+    z     <- qnorm(0.975)
+    prob  <- plogis(lp)
+    # ci_lo <- plogis(lp - z * lp_se)
+    # ci_hi <- plogis(lp + z * lp_se)
 
-    prediction_summary <- glue(
-      "Prediction: {res} \n",
-      "Probability of resolution: {round(prob, 3)} \n",
-      "Odds of resolution: {num} to {denom}"
-    ) %>%
-      str_replace_all(" {2,}", " ")
+    data.frame(
+      horizon      = hor,
+      probability  = prob,
+      # ci_lo        = ci_lo,
+      # ci_hi        = ci_hi,
+      # cutoff       = cutoff,
+      # sensitivity  = sens,
+      # resolve      = prob >= cutoff,
+      model_sheet  = sheet_key,
+      stringsAsFactors = FALSE
+    )
+  }
 
-    input_summary <- glue(
-      "Age: {input$age}\n",
-      "Sex: {input$sex}\n",
-      "Reflux Bilateral: {input$reflux_bilat}\n",
-      "Presenting Symptom: {input$presenting_sx}\n",
-      "{ifelse(is.na(input$udr), '', glue('UDR: {input$udr} \n'))}",
-      "{ifelse(is.na(input$volume_pct), '', glue('Volume: {input$volume_pct} \n'))}",
-      "{ifelse(!nzchar(input$reflux_gr), '', glue('Grade: {input$reflux_gr} \n'))}"
-    ) %>%
-      str_replace_all(" {2,}", " ")
 
-    summary <- glue(
-      "For a {input$age} year old {input$sex} with ",
-      "{ifelse(input$reflux_bilat == 'y', 'bilateral reflux', 'unilateral reflux')} ",
-      "presenting with {input$presenting_sx} and a ",
-      "{ifelse(is.na(input$udr), '', glue('UDR of {input$udr}, '))} ",
-      "{ifelse(is.na(input$volume_pct), '', glue('volume at onset of {input$volume_pct}%, '))}",
-      "{ifelse(!nzchar(input$reflux_gr), '', glue('reflux grade of {input$reflux_gr}, '))}",
-      " the patient is predicted to {res} within {input$horizon}. ",
-      "The probability of resolution is {round(prob, 3)}, ",
-      "which gives an odds of resolution of {num} to {denom}."
-    ) %>%
-      str_replace_all(" {2,}", " ")
+  observeEvent(input$predict, {
+    key <- valid_model(); req(key)
+    horizons <- c("1yr", "2yr")
+    sheets   <- paste0(key, "-resolve", horizons)
 
-    output$summary <- renderText(summary)
+    preds <- purrr::map2_dfr(horizons, sheets, make_prediction)
+    preds$yrs <- c("1 year", "2 years")
+
+    ## ── Patient info summary ───────────────────────────────────────────
+    sex_lbl   <- lbl_sex[input$sex]
+    bilat_lbl <- lbl_bilat[input$reflux_bilat]
+    sx_lbl    <- lbl_sx[input$presenting_sx]
+
+    input_summary <- c(
+      glue("Age: {input$age}"),
+      glue("Sex: {sex_lbl}"),
+      glue("Reflux Bilateral: {bilat_lbl}"),
+      glue("Presenting Symptom: {sx_lbl}"),
+      if (!is.na(input$udr))        glue("UDR: {input$udr}"),
+      if (!is.na(input$volume_pct)) glue("Volume: {input$volume_pct}%"),
+      if (nzchar(input$reflux_gr))  glue("Grade: {input$reflux_gr}")
+    ) |>
+      glue_collapse(sep = "\n")
+
     output$input_summary <- renderText(input_summary)
-    output$prediction_summary <- renderText(prediction_summary)
+
+    ## ── Predictions (chance only) ──────────────────────────────────────
+    pred_txt <- preds |>
+      # mutate(txt = glue("{yrs}: {round(probability*100,1)}% ",
+      #                   "(95% CI {round(ci_lo*100,1)}–{round(ci_hi*100,1)}%)")) |>
+      mutate(txt = glue("{yrs}: {round(probability*100,1)}% ")) |>
+      pull(txt) |>
+      glue_collapse(sep = "\n")
+    output$prediction_summary <- renderText(pred_txt)
+
+  })
+
+  ## ── Toggle info sidebar ───────────────────────────────────────────────
+  observeEvent(input$toggle_info,{
+    runjs("$('#info_sidebar').toggleClass('visible');")
+    runjs("$('#logo').toggleClass('shifted');")
   })
 }
 
