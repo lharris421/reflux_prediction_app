@@ -6,11 +6,8 @@ library(stringr)
 
 ## ── Data ────────────────────────────────────────────────────────────────
 dat_params <- readRDS("data/reflux_model_params.rds")
-# dat_thresh <- readRDS("data/reflux_model_thresholds.rds")
 params1 <- dat_params$params1          # 1-year model coefficients
 params2 <- dat_params$params2          # 2-year model coefficients
-# thresh1 <- dat_thresh$thresh1          # ROC info, 1 year
-# thresh2 <- dat_thresh$thresh2          # ROC info, 2 years
 
 ## ── User interface ───────────────────────────────────────────────────────
 ui <- fluidPage(
@@ -172,15 +169,12 @@ server <- function(input, output, session) {
 
   ## ── Core prediction routine ───────────────────────────────────────────
   make_prediction <- function(hor, sheet_key) {
+
     plist     <- if (hor=="1yr") params1 else params2
-    # thresh_ls <- if (hor=="1yr") thresh1 else thresh2
 
     df       <- plist[[sheet_key]] |> mutate(across(c(Estimate, SE), as.numeric))
-    # cutoff   <- thresh_ls[[sheet_key]]$threshold
-    # sens     <- thresh_ls[[sheet_key]]$sensitivity
 
     lp      <- 0
-    lp_var  <- 0                # ⬅ NEW
 
     for (i in seq_len(nrow(df))) {
       code <- tolower(df$Parameter[i])
@@ -200,23 +194,15 @@ server <- function(input, output, session) {
                     0)
 
       lp     <- lp     + est * x_i
-      # lp_var <- lp_var + (x_i * se)^2      # ⬅ accumulate variance
+
     }
 
-    # lp_se <- sqrt(lp_var)
     z     <- qnorm(0.975)
     prob  <- plogis(lp)
-    # ci_lo <- plogis(lp - z * lp_se)
-    # ci_hi <- plogis(lp + z * lp_se)
 
     data.frame(
       horizon      = hor,
       probability  = prob,
-      # ci_lo        = ci_lo,
-      # ci_hi        = ci_hi,
-      # cutoff       = cutoff,
-      # sensitivity  = sens,
-      # resolve      = prob >= cutoff,
       model_sheet  = sheet_key,
       stringsAsFactors = FALSE
     )
