@@ -3,5 +3,5 @@
 .RData
 .Ruserdata
 data/*
-^data/reflux_model_params.rds
+!data/reflux_model_params.rds
 preprocessing/*
