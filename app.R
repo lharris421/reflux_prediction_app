@@ -8,6 +8,9 @@ library(stringr)
 dat_params <- readRDS("data/reflux_model_params.rds")
 params1 <- dat_params$params1          # 1-year model coefficients
 params2 <- dat_params$params2          # 2-year model coefficients
+dat_thresholds <- readRDS("data/reflux_model_thresholds.rds")
+thresh1 <- dat_thresholds$thresh1
+thresh2 <- dat_thresholds$thresh2
 
 ## ── User interface ───────────────────────────────────────────────────────
 ui <- fluidPage(
@@ -85,16 +88,20 @@ ui <- fluidPage(
              wellPanel(
                fluidRow(
                  column(
-                   width = 6,
+                   width = 12,
                    h4("Patient Information"),
                    div(
                      style = "white-space:pre-line; font-size:18px;",
                      textOutput("input_summary")
                    )
-                 ),
+                 )
+               )
+             ),
+             wellPanel(
+               fluidRow(
                  column(
-                   width = 6,
-                   h4("Chance of resolution"),
+                   width = 12,
+                   h4("Resolution Prediction"),
                    div(
                      style = "white-space:pre-line; font-size:18px;",
                      textOutput("prediction_summary")
@@ -103,7 +110,6 @@ ui <- fluidPage(
                )
              )
            )
-
     )
   ),
 
@@ -111,7 +117,8 @@ ui <- fluidPage(
   tags$div(id="info_sidebar",
            h4("Information"),
            p("Several different models were fit for prediction based on the measurements available. The fitted models contain variables including presenting symptoms, laterality of reflux, grade of reflux, distal ureteral diameter ratio (UDR), and bladder volume at the onset of reflux as a percentage of predicted bladder capacity."),
-           p("The model used for prediction is based on the available data for your patient, and the predicted chance of resolution is based on your patients individualized data."),
+           p("The model used for prediction is based on the available data for your patient, and the prediction of resolution is based on your patients individualized data."),
+           p("Each model uses a different probability cutoff to predict resolution. The cutoff for each model was selected in order to balance sensitivity and specificity, which are reported alongside the prediction."),
            p(
              tags$strong("Note:"),
              " When bilateral reflux is present, the highest grade of either side is used to calculate predicted resolution."
@@ -171,8 +178,10 @@ server <- function(input, output, session) {
   make_prediction <- function(hor, sheet_key) {
 
     plist     <- if (hor=="1yr") params1 else params2
+    tlist     <- if (hor=="1yr") thresh1 else thresh2
 
     df       <- plist[[sheet_key]] |> mutate(across(c(Estimate, SE), as.numeric))
+    thresh_vals <- tlist[[sheet_key]]
 
     lp      <- 0
 
@@ -200,9 +209,14 @@ server <- function(input, output, session) {
     z     <- qnorm(0.975)
     prob  <- plogis(lp)
 
+    print(prob)
+
     data.frame(
       horizon      = hor,
       probability  = prob,
+      prediction   = ifelse(prob >= thresh_vals$threshold, "Resolution", "No Resolution"),
+      sensitivity  = round(thresh_vals$sensitivity, 3)*100,
+      specificity  = round(thresh_vals$specificity, 3)*100,
       model_sheet  = sheet_key,
       stringsAsFactors = FALSE
     )
@@ -237,9 +251,7 @@ server <- function(input, output, session) {
 
     ## ── Predictions (chance only) ──────────────────────────────────────
     pred_txt <- preds |>
-      # mutate(txt = glue("{yrs}: {round(probability*100,1)}% ",
-      #                   "(95% CI {round(ci_lo*100,1)}–{round(ci_hi*100,1)}%)")) |>
-      mutate(txt = glue("{yrs}: {round(probability*100,1)}% ")) |>
+      mutate(txt = glue("{yrs}: {prediction} (sensitivity: {sensitivity}%, specificity: {specificity}%)")) |>
       pull(txt) |>
       glue_collapse(sep = "\n")
     output$prediction_summary <- renderText(pred_txt)
