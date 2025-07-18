@@ -80,7 +80,7 @@ ui <- fluidPage(
                  h4("How to use this tool"),
                  p("1. Fill in the patient information on the left."),
                  p("2. Enter EITHER UDR OR Volume at Onset (and Grade if you have it)."),
-                 p("3. Click ", tags$strong("Predict"), " to see calculate the chance of resolution.")
+                 p("3. Click ", tags$strong("Predict"), " to predict resolution with the provided patient information.")
              )
            ),
            conditionalPanel(
