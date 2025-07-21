@@ -209,8 +209,6 @@ server <- function(input, output, session) {
     z     <- qnorm(0.975)
     prob  <- plogis(lp)
 
-    print(prob)
-
     data.frame(
       horizon      = hor,
       probability  = prob,
