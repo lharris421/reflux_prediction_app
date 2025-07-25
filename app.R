@@ -200,7 +200,7 @@ server <- function(input, output, session) {
                     reflux_bilateral = as.numeric(input$reflux_bilat  == lvl),
                     presentingsx     = as.numeric(input$presenting_sx == lvl),
                     reflux_gr        = as.numeric(input$reflux_gr     == lvl),
-                    0)
+                    stop("Unexpected input, please submit a bug."))
 
       lp     <- lp     + est * x_i
 
@@ -212,6 +212,7 @@ server <- function(input, output, session) {
     data.frame(
       horizon      = hor,
       probability  = prob,
+      thresh       = thresh_vals$threshold,
       prediction   = ifelse(prob >= thresh_vals$threshold, "Resolution", "No Resolution"),
       sensitivity  = round(thresh_vals$sensitivity, 3)*100,
       specificity  = round(thresh_vals$specificity, 3)*100,
