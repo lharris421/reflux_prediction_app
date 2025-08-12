@@ -1,0 +1,13 @@
+name: Reflux_Resolution_Prediction
+title: Reflux_Resolution_Prediction
+username: loganharris
+account: loganharris
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14802985
+bundleId: 10480351
+url: https://loganharris.shinyapps.io/Reflux_Resolution_Prediction/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: app_calc_check.R|data_prep.R|functions.R|knute_draws_idea.R|previous_calc_exploration.R|probability_exploration.R|tradeoff_exp.R
