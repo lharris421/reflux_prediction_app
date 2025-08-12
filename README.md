@@ -1,4 +1,6 @@
-# Statements
+# Overview
+
+Shiny app for predicting spontaneous urinary reflux resolution.
 
 Logistic GEE models were fit using PROC GENMOD in SAS.
 
